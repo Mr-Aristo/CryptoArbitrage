@@ -1,14 +1,9 @@
-using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using PriceData.Application.Interfaces;
 using PriceData.Application.Jobs;
 using PriceData.Infrastructure.Data;
 using PriceData.Infrastructure.Repositories;
 using Quartz;
-using Quartz.Impl;
-using Quartz.Spi;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
