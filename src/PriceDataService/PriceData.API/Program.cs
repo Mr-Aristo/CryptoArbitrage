@@ -1,3 +1,4 @@
+using Carter;
 using Microsoft.EntityFrameworkCore;
 using PriceData.Application.Interfaces;
 using PriceData.Application.Jobs;
@@ -18,6 +19,9 @@ builder.Host.UseSerilog((context, services, configuration) =>
 builder.Services.AddDbContext<PriceDataContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DataConnection")));
 
+//Carter for minimal api
+builder.Services.AddCarter();
+
 // Dependency Injection
 builder.Services.AddScoped<IFuturePriceRepository, FuturePriceRepository>();
 builder.Services.AddScoped<FuturesPriceService>();
@@ -32,12 +36,11 @@ builder.Services.AddQuartz(q =>
     q.AddTrigger(opts => opts
          .ForJob(jobKey)
          .WithIdentity("FetchPriceJob-trigger")
-         .WithSimpleSchedule(x => x.WithIntervalInMinutes(1).RepeatForever())
+         .WithCronSchedule("0 0/30 * * * ?")
     );
 });
 builder.Services.AddQuartzHostedService(q => q.WaitForJobsToComplete = true);
 
-builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
 
@@ -52,5 +55,5 @@ var app = builder.Build();
 
 app.UseRouting();
 app.UseAuthorization();
-app.MapControllers();
+app.MapCarter();
 app.Run();
