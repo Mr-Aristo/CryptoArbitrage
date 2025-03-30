@@ -4,6 +4,7 @@ using Binance.Net.Objects;
 using CryptoExchange.Net.Authentication;
 using Microsoft.Extensions.Configuration;
 using PriceData.Application.Interfaces;
+using PriceData.Domain.Exceptions;
 using PriceData.Domain.Models;
 
 public class FuturesPriceService
@@ -27,11 +28,19 @@ public class FuturesPriceService
 
     public async Task<FuturePrice> FetchPriceAsync(string symbol)
     {
-        // Futures price check
+        if (string.IsNullOrWhiteSpace(symbol))
+        {
+            throw new InvalidSymbolException(symbol);
+        }
+
+       
         var result = await _restClient.UsdFuturesApi.ExchangeData.GetPriceAsync(symbol);
 
         if (!result.Success)
-            throw new Exception($"Price error: {result.Error}");
+        {
+          
+            throw new ExternalApiException($"Price error: {result.Error}");
+        }
 
         var priceData = new FuturePrice
         {
@@ -40,8 +49,17 @@ public class FuturesPriceService
             TimeStamp = DateTime.UtcNow
         };
 
-        await _repository.AddAsync(priceData);
+        try
+        {
+            await _repository.AddAsync(priceData);
+        }
+        catch (Exception ex)
+        {
+            throw new DatabaseException($"Occured an error while saving price: {ex.Message}", ex);
+        }
+
         return priceData;
+
     }
 
 }
