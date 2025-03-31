@@ -1,0 +1,10 @@
+﻿global using Binance.Net.Clients;
+global using Binance.Net.Interfaces.Clients;
+global using CryptoExchange.Net.Authentication;
+global using Microsoft.Extensions.Configuration;
+global using PriceData.Application.Interfaces;
+global using PriceData.Domain.Exceptions;
+global using PriceData.Domain.Models;
+global using RabbitMQ.Interfaces;
+global using Microsoft.Extensions.Logging;
+global using Quartz;

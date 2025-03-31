@@ -13,9 +13,5 @@
     <PackageReference Include="RabbitMQ.Client" Version="7.1.2" />
   </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\..\ArbitrageService\Arbitrage.Application\Arbitrage.Application.csproj" />
-    <ProjectReference Include="..\..\ArbitrageService\Arbitrage.Domain\Arbitrage.Domain.csproj" />
-  </ItemGroup>
 
 </Project>

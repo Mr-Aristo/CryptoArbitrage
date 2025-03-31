@@ -1,14 +1,3 @@
-using Carter;
-using Microsoft.EntityFrameworkCore;
-using PriceData.API.Middlewares;
-using PriceData.Application.Interfaces;
-using PriceData.Application.Jobs;
-using PriceData.Infrastructure.Data;
-using PriceData.Infrastructure.Repositories;
-using Quartz;
-using RabbitMQ.Client;
-using Serilog;
-
 var builder = WebApplication.CreateBuilder(args);
 
 // Serilog configuration
@@ -26,7 +15,7 @@ builder.Services.AddCarter();
 
 // Dependency Injection
 builder.Services.AddScoped<IFuturePriceRepository, FuturePriceRepository>();
-builder.Services.AddScoped<FuturesPriceService>();
+builder.Services.AddScoped<IFuturePriceService,FuturesPriceService>();
 
 // Quartz configuration
 builder.Services.AddQuartz(q =>
@@ -45,15 +34,8 @@ builder.Services.AddQuartzHostedService(q => q.WaitForJobsToComplete = true);
 
 builder.Services.AddEndpointsApiExplorer();
 
-// RabbitMQ Connection
-var factory = new ConnectionFactory()
-{
-    HostName = builder.Configuration["RabbitMQ:Host"],
-    UserName = builder.Configuration["RabbitMQ:UserName"],
-    Password = builder.Configuration["RabbitMQ:Password"]
-};
-
-builder.Services.AddSingleton(factory);
+// RabbitMQ 
+builder.Services.AddSingleton<IRabbitMqService, RabbitMqService>();
 
 
 var app = builder.Build();

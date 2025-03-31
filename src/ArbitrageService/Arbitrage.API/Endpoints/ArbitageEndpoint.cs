@@ -7,9 +7,9 @@ public class ArbitageEndpoint : ICarterModule
 {
     public void AddRoutes(IEndpointRouteBuilder app)
     {
-        app.MapGet("/api/arbitrage/last", async (HttpContext context, IArbitrageRepository repository) =>
+        app.MapGet("/api/arbitrage/last/{symbol}", async (string symbol, HttpContext context, IArbitrageRepository repository) =>
         {
-            var result = await repository.GetLastResultAsync(DateTime.UtcNow);
+            var result = await repository.GetLastResultAsync(symbol, DateTime.UtcNow);
             if (result == null)
             {
                 context.Response.StatusCode = 404;

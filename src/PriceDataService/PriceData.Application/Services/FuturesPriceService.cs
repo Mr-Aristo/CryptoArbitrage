@@ -1,21 +1,16 @@
-﻿using Binance.Net.Clients;
-using Binance.Net.Interfaces.Clients;
-using Binance.Net.Objects;
-using CryptoExchange.Net.Authentication;
-using Microsoft.Extensions.Configuration;
-using PriceData.Application.Interfaces;
-using PriceData.Domain.Exceptions;
-using PriceData.Domain.Models;
+﻿namespace PriceData.Application.Services;
 
-public class FuturesPriceService
+public class FuturesPriceService : IFuturePriceService
 {
     private readonly IBinanceRestClient _restClient;
     private readonly IFuturePriceRepository _repository;
+    private readonly IRabbitMqService _rabbitMqService;
+    private readonly string _priceDataQueue;
 
-    public FuturesPriceService(IConfiguration config, IFuturePriceRepository repository)
+    public FuturesPriceService(IConfiguration configuration, IFuturePriceRepository repository, IRabbitMqService rabbitMqService)
     {
-        var apiKey = config["BinanceApi:ApiKey"];
-        var apiSecret = config["BinanceApi:ApiSecret"];
+        var apiKey = configuration["BinanceApi:ApiKey"];
+        var apiSecret = configuration["BinanceApi:ApiSecret"];
 
         // REST client setup
         _restClient = new BinanceRestClient(options =>
@@ -24,6 +19,8 @@ public class FuturesPriceService
         });
 
         _repository = repository;
+        _rabbitMqService = rabbitMqService;
+        _priceDataQueue = configuration["RabbitMQ:PriceDataQueue"] ?? "PriceDataQueue";
     }
 
     public async Task<FuturePrice> FetchPriceAsync(string symbol)
@@ -57,6 +54,8 @@ public class FuturesPriceService
         {
             throw new DatabaseException($"Occured an error while saving price: {ex.Message}", ex);
         }
+
+        await _rabbitMqService.PublishMessageAsync(priceData, _priceDataQueue);
 
         return priceData;
 

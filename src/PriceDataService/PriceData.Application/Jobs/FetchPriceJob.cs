@@ -1,13 +1,10 @@
-﻿using Microsoft.Extensions.Logging;
-using Quartz;
-
-namespace PriceData.Application.Jobs;
+﻿namespace PriceData.Application.Jobs;
 
 public class FetchPriceJob : IJob
 {
-    private readonly FuturesPriceService _priceService;
+    private readonly IFuturePriceService _priceService;
     private readonly ILogger<FetchPriceJob> _logger;
-    public FetchPriceJob(FuturesPriceService priceService, ILogger<FetchPriceJob> logger)
+    public FetchPriceJob(IFuturePriceService priceService, ILogger<FetchPriceJob> logger)
     {
         _priceService = priceService;
         _logger = logger;

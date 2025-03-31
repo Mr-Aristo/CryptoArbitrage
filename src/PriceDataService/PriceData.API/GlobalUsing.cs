@@ -1,0 +1,12 @@
+﻿global using Carter;
+global using Microsoft.EntityFrameworkCore;
+global using PriceData.API.Middlewares;
+global using PriceData.Application.Interfaces;
+global using PriceData.Application.Jobs;
+global using PriceData.Infrastructure.Data;
+global using PriceData.Infrastructure.Repositories;
+global using Quartz;
+global using RabbitMQ.Client;
+global using RabbitMQ.Interfaces;
+global using RabbitMQ.Services;
+global using Serilog;
