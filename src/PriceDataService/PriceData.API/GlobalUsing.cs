@@ -10,3 +10,4 @@ global using RabbitMQ.Client;
 global using RabbitMQ.Interfaces;
 global using RabbitMQ.Services;
 global using Serilog;
+global using PriceData.Application.Services;

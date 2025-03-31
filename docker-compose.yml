@@ -1,0 +1,6 @@
+services:
+  pricedata.api:
+    image: ${DOCKER_REGISTRY-}pricedataapi
+    build:
+      context: .
+      dockerfile: src/PriceDataService/PriceData.API/Dockerfile

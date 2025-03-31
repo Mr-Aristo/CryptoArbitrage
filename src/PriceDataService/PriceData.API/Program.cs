@@ -1,3 +1,4 @@
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Serilog configuration
@@ -50,6 +51,5 @@ var app = builder.Build();
 app.UseMiddleware<ExceptionMiddleware>();
 
 app.UseRouting();
-app.UseAuthorization();
 app.MapCarter();
 app.Run();

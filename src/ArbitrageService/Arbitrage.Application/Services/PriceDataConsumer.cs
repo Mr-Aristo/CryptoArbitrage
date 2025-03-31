@@ -1,23 +1,25 @@
-﻿namespace Arbitrage.Application.Services;
+﻿using Microsoft.Extensions.DependencyInjection;
+
+namespace Arbitrage.Application.Services;
 
 public class PriceDataConsumer : BackgroundService
 {
     private readonly IRabbitMqService _rabbitMqService;
-    private readonly IArbitageCalculation _calculationService;
+    private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<PriceDataConsumer> _logger;
     private readonly string _queueName;
     private readonly ConcurrentDictionary<string, FuturePriceDto> _priceBuffer;
 
     public PriceDataConsumer(IRabbitMqService rabbitMqService,
-        IArbitageCalculation calculationService,
         IConfiguration configuration,
-        ILogger<PriceDataConsumer> logger)
+        ILogger<PriceDataConsumer> logger,
+        IServiceProvider serviceProvider)
     {
         _rabbitMqService = rabbitMqService;
-        _calculationService = calculationService;
         _logger = logger;
         _queueName = configuration["RabbitMQ:PriceDataQueue"] ?? "PriceDataQueue";
         _priceBuffer = new ConcurrentDictionary<string, FuturePriceDto>();
+        _serviceProvider = serviceProvider;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -25,6 +27,9 @@ public class PriceDataConsumer : BackgroundService
 
         await _rabbitMqService.SubscribeToQueueAsync<FuturePriceDto>(_queueName, async (priceData) =>
         {
+            using var scope = _serviceProvider.CreateScope();
+            var calculationService = scope.ServiceProvider.GetRequiredService<IArbitageCalculation>();
+
             _logger.LogInformation("Received price data: {Symbol} - {Price}", priceData.Symbol, priceData.Price);
             _priceBuffer[priceData.Symbol] = priceData;
 
@@ -39,7 +44,7 @@ public class PriceDataConsumer : BackgroundService
                    
                     if (currentPrice != null && previousPrice != null)
                     {
-                        await _calculationService.CalculateAndSaveAsync(currentPrice, previousPrice);
+                        await calculationService.CalculateAndSaveAsync(currentPrice, previousPrice);
                     }
                     else
                     {

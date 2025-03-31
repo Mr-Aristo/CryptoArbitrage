@@ -1,4 +1,4 @@
-﻿var builder = WebApplication.CreateBuilder(args);
+var builder = WebApplication.CreateBuilder(args);
 
 // Serilog 
 builder.Host.UseSerilog((context, services, configuration) =>
@@ -12,7 +12,7 @@ builder.Services.AddDbContext<ArbitrageContext>(options =>
 
 
 builder.Services.AddScoped<IArbitrageRepository, ArbitrageRepository>();
-builder.Services.AddScoped<IArbitageCalculation,ArbitrageCalculationService>();
+builder.Services.AddScoped<IArbitageCalculation, ArbitrageCalculationService>();
 
 //RabbitMQ
 builder.Services.AddSingleton<IRabbitMqService, RabbitMqService>();
@@ -20,7 +20,7 @@ builder.Services.AddHostedService<PriceDataConsumer>();
 
 builder.Services.AddCarter();
 
-builder.Services.AddHostedService<PriceDataConsumer>();
+builder.Services.AddScoped<PriceDataConsumer>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
