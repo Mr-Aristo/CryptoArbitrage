@@ -14,7 +14,7 @@ This project is a microservices-based application designed to perform synthetic 
 - **PostgreSQL** - Relational database used for storing arbitrage calculations and price data.
 - **FluentValidation** - Used for request validation in services.
 - **Serilog** - Logging framework for structured logging.
-- **Hangfire** - Used for background job processing (optional, if not using Quartz.NET).
+- **Quartz.NET** - Used for background job processing.
 - **Docker & Docker Compose** - Containerized deployment and service orchestration.
 - **Traefik** - Reverse proxy and API Gateway for routing requests.
 - **Grafana** - Monitoring and visualization of system metrics.
