@@ -1,6 +1,97 @@
+version: "3.8"
 services:
-  pricedata.api:
-    image: ${DOCKER_REGISTRY-}pricedataapi
+  traefik:
+    image: traefik:v2.9
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--api.insecure=true"
+    ports:
+      - "80:80"
+      - "8080:8080"  # Traefik dashboard
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    labels:
+      - "traefik.enable=true"
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"  # RabbitMQ management console
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.rabbitmq.rule=Host(rabbitmq.local)"
+      - "traefik.http.routers.rabbitmq.entrypoints=web"
+
+  postgres:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: yourpassword
+      POSTGRES_DB: common_db
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    labels:
+      - "traefik.enable=false"
+
+  api_gateway:
     build:
-      context: .
-      dockerfile: src/PriceDataService/PriceData.API/Dockerfile
+      context: ./ApiGateway
+    ports:
+      - "5000:80"
+    depends_on:
+      - pricedataservice
+      - arbitrageservice
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.api-gateway.rule=Host(gateway.local)"
+      - "traefik.http.routers.api-gateway.entrypoints=web"
+
+  pricedataservice:
+    build:
+      context: ./PriceDataService
+    ports:
+      - "5001:80"
+    depends_on:
+      - postgres
+      - rabbitmq
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.pricedata.rule=Host(pricedata.local)"
+      - "traefik.http.routers.pricedata.entrypoints=web"
+
+  arbitrageservice:
+    build:
+      context: ./ArbitrageService
+    ports:
+      - "5002:80"
+    depends_on:
+      - postgres
+      - rabbitmq
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.arbitrage.rule=Host(arbitrage.local)"
+      - "traefik.http.routers.arbitrage.entrypoints=web"
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    depends_on:
+      - postgres
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.grafana.rule=Host(grafana.local)"
+      - "traefik.http.routers.grafana.entrypoints=web"
+
+volumes:
+  pgdata:

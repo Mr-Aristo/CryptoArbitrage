@@ -1,5 +1,27 @@
+version: "3.8"
 services:
+  pricedataservice:
+    environment:
+      - ConnectionStrings__PriceDataConnection=Host=postgres;Port=5432;Database=pricedata_db;Username=postgres;Password=yourpassword
+      - BinanceApi__ApiKey=YvmPUZE6mv9SD5VNHk4HlWFsOr6aKE2zvsw0MuIgwCIPy6utIco14y7Ju91duEh8A
+      - BinanceApi__ApiSecret=NhqPtmdSJYdKjVHjA7PZj4Mge3R5YNiP1e3UZjInClVN65XAbvqqM6A7H5fATj0j
+    volumes:
+      - ${APPDATA}/Microsoft/UserSecrets:/home/app/.microsoft/usersecrets:ro
+      - ${APPDATA}/ASP.NET/Https:/home/app/.aspnet/https:ro
+
+  arbitrageservice:
+    environment:
+      - ConnectionStrings__ArbitrageConnection=Host=postgres;Port=5432;Database=arbitrage_db;Username=postgres;Password=yourpassword
+      - RabbitMQ__Host=rabbitmq
+      - RabbitMQ__QueueName=price_data_queue
+      - RabbitMQ__UserName=guest
+      - RabbitMQ__Password=guest
+
   pricedata.api:
+    image: ${DOCKER_REGISTRY-}pricedataapi
+    build:
+      context: .
+      dockerfile: src/PriceDataService/PriceData.API/Dockerfile
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_HTTP_PORTS=8080
