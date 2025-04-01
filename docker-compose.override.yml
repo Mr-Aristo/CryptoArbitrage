@@ -1,21 +1,110 @@
 version: "3.8"
+
 services:
-  pricedataservice:
+  traefik:
+    image: traefik:v2.9
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--api.insecure=true"
+    ports:
+      - "80:80"
+      - "8080:8080"  
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    labels:
+      - "traefik.enable=true"
+
+  rabbitmq:
+    image: rabbitmq:3-management
     environment:
-      - ConnectionStrings__PriceDataConnection=Host=postgres;Port=5432;Database=pricedata_db;Username=postgres;Password=yourpassword
-      - BinanceApi__ApiKey=YvmPUZE6mv9SD5VNHk4HlWFsOr6aKE2zvsw0MuIgwCIPy6utIco14y7Ju91duEh8A
-      - BinanceApi__ApiSecret=NhqPtmdSJYdKjVHjA7PZj4Mge3R5YNiP1e3UZjInClVN65XAbvqqM6A7H5fATj0j
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "5672:5672"
+      - "15672:15672"  
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.rabbitmq.rule=Host(`rabbitmq.local`)"
+      - "traefik.http.routers.rabbitmq.entrypoints=web"
+
+  postgres_price:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: yourpassword
+      POSTGRES_DB: price_data_db
+    volumes:
+      - pgdata_price:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    labels:
+      - "traefik.enable=false"
+
+  postgres_arbitrage:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: yourpassword
+      POSTGRES_DB: arbitrage_data_db
+    volumes:
+      - pgdata_arbitrage:/var/lib/postgresql/data
+    ports:
+      - "5434:5432"
+    labels:
+      - "traefik.enable=false"
+
+  ocelot.api:
+    image: ${DOCKER_REGISTRY-}ocelotapi
+    build:
+      context: .
+      dockerfile: src/APIGateway/Ocelot.API/Dockerfile
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_HTTP_PORTS=8080
+      - ASPNETCORE_HTTPS_PORTS=8081
+    ports:
+      - "8080:8080"
+      - "8081:8081"
     volumes:
       - ${APPDATA}/Microsoft/UserSecrets:/home/app/.microsoft/usersecrets:ro
       - ${APPDATA}/ASP.NET/Https:/home/app/.aspnet/https:ro
+    depends_on:
+      - pricedata.api
+      - arbitrageapi
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.api-gateway.rule=Host(`gateway.local`)"
+      - "traefik.http.routers.api-gateway.entrypoints=web"
 
-  arbitrageservice:
+  arbitrageapi:
+    image: ${DOCKER_REGISTRY-}arbitrageapi
+    build:
+      context: .
+      dockerfile: src/ArbitrageService/ArbitrageAPI/Dockerfile
     environment:
-      - ConnectionStrings__ArbitrageConnection=Host=postgres;Port=5432;Database=arbitrage_db;Username=postgres;Password=yourpassword
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_HTTP_PORTS=8080
+      - ASPNETCORE_HTTPS_PORTS=8081
+      - ConnectionStrings__ArbitrageDataConnection=Host=postgres_arbitrage;Port=5432;Database=arbitrage_data_db;Username=postgres;Password=yourpassword
       - RabbitMQ__Host=rabbitmq
-      - RabbitMQ__QueueName=price_data_queue
       - RabbitMQ__UserName=guest
       - RabbitMQ__Password=guest
+      - RabbitMQ__PriceDataQueue=PriceDataQueue
+    ports:
+      - "8082:8080"  
+      - "8083:8081"  
+    volumes:
+      - ${APPDATA}/Microsoft/UserSecrets:/home/app/.microsoft/usersecrets:ro
+      - ${APPDATA}/ASP.NET/Https:/home/app/.aspnet/https:ro
+    depends_on:
+      - postgres_arbitrage
+      - rabbitmq
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.arbitrage.rule=Host(`arbitrage.local`)"
+      - "traefik.http.routers.arbitrage.entrypoints=web"
 
   pricedata.api:
     image: ${DOCKER_REGISTRY-}pricedataapi
@@ -26,9 +115,41 @@ services:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_HTTP_PORTS=8080
       - ASPNETCORE_HTTPS_PORTS=8081
+      - ConnectionStrings__PriceDataConnection=Host=postgres_price;Port=5432;Database=price_data_db;Username=postgres;Password=yourpassword
+      - BinanceApi__ApiKey=YOUR_BINANCE_API_KEY
+      - BinanceApi__ApiSecret=YOUR_BINANCE_API_SECRET
+      - RabbitMQ__Host=rabbitmq
+      - RabbitMQ__UserName=guest
+      - RabbitMQ__Password=guest
+      - RabbitMQ__PriceDataQueue=PriceDataQueue
     ports:
-      - "8080"
-      - "8081"
+      - "8084:8080" 
+      - "8085:8081" 
     volumes:
       - ${APPDATA}/Microsoft/UserSecrets:/home/app/.microsoft/usersecrets:ro
       - ${APPDATA}/ASP.NET/Https:/home/app/.aspnet/https:ro
+    depends_on:
+      - postgres_price
+      - rabbitmq
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.pricedata.rule=Host(`pricedata.local`)"
+      - "traefik.http.routers.pricedata.entrypoints=web"
+
+  grafana:
+    image: grafana/grafana:latest
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres_price
+      - postgres_arbitrage
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.grafana.rule=Host(`grafana.local`)"
+      - "traefik.http.routers.grafana.entrypoints=web"
+
+volumes:
+  pgdata_price:
+  pgdata_arbitrage:
