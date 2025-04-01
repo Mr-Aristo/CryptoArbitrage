@@ -33,8 +33,8 @@ services:
     image: postgres:13
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: yourpassword
-      POSTGRES_DB: price_data_db
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: pricedata_db
     volumes:
       - pgdata_price:/var/lib/postgresql/data
     ports:
@@ -46,8 +46,8 @@ services:
     image: postgres:13
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: yourpassword
-      POSTGRES_DB: arbitrage_data_db
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: arbitrage_db
     volumes:
       - pgdata_arbitrage:/var/lib/postgresql/data
     ports:
@@ -116,8 +116,8 @@ services:
       - ASPNETCORE_HTTP_PORTS=8080
       - ASPNETCORE_HTTPS_PORTS=8081
       - ConnectionStrings__PriceDataConnection=Host=postgres_price;Port=5432;Database=price_data_db;Username=postgres;Password=yourpassword
-      - BinanceApi__ApiKey=YOUR_BINANCE_API_KEY
-      - BinanceApi__ApiSecret=YOUR_BINANCE_API_SECRET
+      - BinanceApi__ApiKey=vmPUZE6mv9SD5VNHk4HlWFsOr6aKE2zvsw0MuIgwCIPy6utIco14y7Ju91duEh8A
+      - BinanceApi__ApiSecret=NhqPtmdSJYdKjVHjA7PZj4Mge3R5YNiP1e3UZjInClVN65XAbvqqM6A7H5fATj0j
       - RabbitMQ__Host=rabbitmq
       - RabbitMQ__UserName=guest
       - RabbitMQ__Password=guest
