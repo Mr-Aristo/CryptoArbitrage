@@ -13,10 +13,9 @@ public class RabbitMqService : IRabbitMqService, IAsyncDisposable
             HostName = configuration["RabbitMQ:Host"],
             UserName = configuration["RabbitMQ:UserName"],
             Password = configuration["RabbitMQ:Password"], 
-           // DispatchConsumersAsync = true // Asenkron tüketici desteği
         };
 
-        // Asenkron olarak bağlantı ve kanal oluşturuluyor
+ 
         _connection = factory.CreateConnectionAsync().GetAwaiter().GetResult();
         _channel = _connection.CreateChannelAsync().GetAwaiter().GetResult();
     }
