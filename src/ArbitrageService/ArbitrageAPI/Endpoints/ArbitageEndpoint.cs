@@ -1,24 +1,25 @@
 ﻿using Arbitrage.Application.Interfaces;
 using Carter;
 
-namespace Arbitrage.API.Endpoints;
-
-public class ArbitageEndpoint : ICarterModule
+namespace Arbitrage.API.Endpoints
 {
-    public void AddRoutes(IEndpointRouteBuilder app)
+    public class ArbitageEndpoint : ICarterModule
     {
-        app.MapGet("/api/arbitrage/last/{symbol}", async (string symbol, HttpContext context, IArbitrageRepository repository) =>
+        public void AddRoutes(IEndpointRouteBuilder app)
         {
-            var result = await repository.GetLastResultAsync(symbol, DateTime.UtcNow);
-            if (result == null)
+            app.MapGet("/api/arbitrage/last/{symbol}", async (string symbol, HttpContext context, IArbitrageRepository repository) =>
             {
-                context.Response.StatusCode = 404;
-                await context.Response.WriteAsync("Arbitrage result not found");
-            }
-            else
-            {
-                await context.Response.WriteAsJsonAsync(result);
-            }
-        });
+                var result = await repository.GetLastResultAsync(symbol, DateTime.UtcNow);
+                if (result == null)
+                {
+                    context.Response.StatusCode = 404;
+                    await context.Response.WriteAsync("Arbitrage result not found");
+                }
+                else
+                {
+                    await context.Response.WriteAsJsonAsync(result);
+                }
+            });
+        }
     }
 }

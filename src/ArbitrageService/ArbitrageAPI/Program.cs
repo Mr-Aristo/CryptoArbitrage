@@ -25,6 +25,25 @@ builder.Services.AddScoped<PriceDataConsumer>();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
+builder.Services.AddMassTransit(x =>
+{
+    // Consumer’ı ekliyoruz
+    x.AddConsumer<PriceDataConsumer>();
+
+    x.UsingRabbitMq((context, cfg) =>
+    {
+        cfg.Host(builder.Configuration["RabbitMQ:Host"], "/", h =>
+        {
+            h.Username(builder.Configuration["RabbitMQ:UserName"]);
+            h.Password(builder.Configuration["RabbitMQ:Password"]);
+        });
+        // Endpoint’i konfigüre ediyoruz
+        cfg.ReceiveEndpoint(builder.Configuration["RabbitMQ:PriceDataQueue"] ?? "PriceDataQueue", e =>
+        {
+            e.ConfigureConsumer<PriceDataConsumer>(context);
+        });
+    });
+});
 
 
 var app = builder.Build();

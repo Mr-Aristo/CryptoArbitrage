@@ -1,55 +1,51 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using MassTransit;
+using Messaging.Contracts;
+using Microsoft.Extensions.Logging;
+using System.Collections.Concurrent;
 
-namespace Arbitrage.Application.Services;
-
-public class PriceDataConsumer : BackgroundService
+namespace Arbitrage.Application.MassTransitConsumers
 {
-    private readonly IRabbitMqService _rabbitMqService;
-    private readonly IServiceProvider _serviceProvider;
-    private readonly ILogger<PriceDataConsumer> _logger;
-    private readonly string _queueName;
-    private readonly ConcurrentDictionary<string, FuturePriceDto> _priceBuffer;
-
-    public PriceDataConsumer(IRabbitMqService rabbitMqService,
-        IConfiguration configuration,
-        ILogger<PriceDataConsumer> logger,
-        IServiceProvider serviceProvider)
+    public class PriceDataConsumer : IConsumer<FuturePriceDto>
     {
-        _rabbitMqService = rabbitMqService;
-        _logger = logger;
-        _queueName = configuration["RabbitMQ:PriceDataQueue"] ?? "PriceDataQueue";
-        _priceBuffer = new ConcurrentDictionary<string, FuturePriceDto>();
-        _serviceProvider = serviceProvider;
-    }
+        private readonly IServiceProvider _serviceProvider;
+        private readonly ILogger<PriceDataConsumer> _logger;
+        private readonly ConcurrentDictionary<string, FuturePriceDto> _priceBuffer;
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-    {
-
-        await _rabbitMqService.SubscribeToQueueAsync<FuturePriceDto>(_queueName, async (priceData) =>
+        public PriceDataConsumer(IServiceProvider serviceProvider, ILogger<PriceDataConsumer> logger)
         {
-            using var scope = _serviceProvider.CreateScope();
-            var calculationService = scope.ServiceProvider.GetRequiredService<IArbitageCalculation>();
+            _serviceProvider = serviceProvider;
+            _logger = logger;
+            _priceBuffer = new ConcurrentDictionary<string, FuturePriceDto>();
+        }
 
+        public async Task Consume(ConsumeContext<FuturePriceDto> context)
+        {
+            var priceData = context.Message;
             _logger.LogInformation("Received price data: {Symbol} - {Price}", priceData.Symbol, priceData.Price);
+            
             _priceBuffer[priceData.Symbol] = priceData;
 
-
-            if (_priceBuffer.TryGetValue("BTCUSDT_QUARTER", out var currentPrice) &&
-            _priceBuffer.TryGetValue("BTCUSDT_BI-QUARTER", out var previousPrice))
+       
+            if (_priceBuffer.Count >= 2)
             {
+               
+                var prices = _priceBuffer.Values.Take(2).ToList();
+
+                
+                if (prices[0].Symbol != prices[1].Symbol)
+                {
+                    _logger.LogWarning("Symbol mismatch detected. Received symbols: {Symbol1} and {Symbol2}",
+                        prices[0].Symbol, prices[1].Symbol);
+                    _priceBuffer.Clear();
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var calculationService = scope.ServiceProvider.GetRequiredService<IArbitageCalculation>();
+                _logger.LogInformation("Both price data received. Calculating arbitrage for symbol {Symbol}...", prices[0].Symbol);
                 try
                 {
-                    _logger.LogInformation("Both price data received. Calculating arbitrage...");
-
-                   
-                    if (currentPrice != null && previousPrice != null)
-                    {
-                        await calculationService.CalculateAndSaveAsync(currentPrice, previousPrice);
-                    }
-                    else
-                    {
-                        _logger.LogWarning("One or both price values are null. Skipping calculation.");
-                    }
+                    await calculationService.CalculateAndSaveAsync(prices[0], prices[1]);
                 }
                 catch (Exception ex)
                 {
@@ -57,22 +53,13 @@ public class PriceDataConsumer : BackgroundService
                 }
                 finally
                 {
-
-                    if (_priceBuffer.Count > 0)
-                    {
-                        _priceBuffer.Clear();
-                    }
+                    _priceBuffer.Clear();
                 }
             }
             else
             {
-                
-                var missingKeys = new List<string>();
-                if (!_priceBuffer.ContainsKey("BTCUSDT_QUARTER")) missingKeys.Add("BTCUSDT_QUARTER");
-                if (!_priceBuffer.ContainsKey("BTCUSDT_BI-QUARTER")) missingKeys.Add("BTCUSDT_BI-QUARTER");
-
-                _logger.LogDebug($"Waiting for price data. Missing keys: {string.Join(", ", missingKeys)}");
+                _logger.LogDebug("Waiting for more price data. Current buffer count: {Count}", _priceBuffer.Count);
             }
-        });
+        }
     }
 }
